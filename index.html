@@ -233,6 +233,24 @@
 
   .empty { color: #888; font-style: italic; }
 
+  .notation {
+    font-size: 11px;
+    font-weight: normal;
+    color: #888;
+    font-style: italic;
+  }
+
+  .group-header {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #888;
+    padding: 4px 2px 4px;
+    margin-top: 8px;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 8px;
+  }
+
   .warn {
     padding: 10px 14px;
     background: #fffbe6;
@@ -354,22 +372,25 @@
 
     if (active.length === 2) {
       const [k1, k2] = active;
-      const out = [];
+      const l1 = k1, l2 = k2;
       sections.push(
-        { key: 'both',  title: `In both ${names[k1]} & ${names[k2]}`, color: '#2d7a2d', items: intersect([k1,k2], out) },
-        { key: 'only'+k1, title: `Only in ${names[k1]}`,             color: '#a03030', items: intersect([k1],[k2]) },
-        { key: 'only'+k2, title: `Only in ${names[k2]}`,             color: '#1a5fa0', items: intersect([k2],[k1]) },
+        { key: 'both',    title: `In both ${names[k1]} & ${names[k2]}`, notation: `${l1} ∩ ${l2}`,           color: '#2d7a2d', items: intersect([k1,k2],[]),  tip: `Items that appear in both ${names[k1]} and ${names[k2]}.` },
+        { key: 'only'+k1, title: `Only in ${names[k1]}`,                notation: `${l1} − ${l2}`,           color: '#a03030', items: intersect([k1],[k2]),   tip: `Items that exist in ${names[k1]} but are not found in ${names[k2]}.` },
+        { key: 'only'+k2, title: `Only in ${names[k2]}`,                notation: `${l2} − ${l1}`,           color: '#1a5fa0', items: intersect([k2],[k1]),   tip: `Items that exist in ${names[k2]} but are not found in ${names[k1]}.` },
       );
     } else {
-      // all three active
+      const n = names;
       sections.push(
-        { key: 'all3',  title: `In all three (${names.A}, ${names.B} & ${names.C})`, color: '#2d7a2d', items: intersect(['A','B','C'],[]) },
-        { key: 'ab',    title: `In ${names.A} & ${names.B} only`,                    color: '#2a7a7a', items: intersect(['A','B'],['C']) },
-        { key: 'ac',    title: `In ${names.A} & ${names.C} only`,                    color: '#7a5a20', items: intersect(['A','C'],['B']) },
-        { key: 'bc',    title: `In ${names.B} & ${names.C} only`,                    color: '#6a3a9a', items: intersect(['B','C'],['A']) },
-        { key: 'onlyA', title: `Only in ${names.A}`,                                 color: '#a03030', items: intersect(['A'],['B','C']) },
-        { key: 'onlyB', title: `Only in ${names.B}`,                                 color: '#1a5fa0', items: intersect(['B'],['A','C']) },
-        { key: 'onlyC', title: `Only in ${names.C}`,                                 color: '#5a2a8a', items: intersect(['C'],['A','B']) },
+        { key: 'all3',   group: 'In all three',       title: `In all three (${n.A}, ${n.B} & ${n.C})`, notation: 'A ∩ B ∩ C',     color: '#2d7a2d', items: intersect(['A','B','C'],[]),  tip: `Items that appear in all three lists — ${n.A}, ${n.B}, and ${n.C}.` },
+        { key: 'ab_inc', group: 'Shared between two', title: `In ${n.A} & ${n.B}`,                      notation: 'A ∩ B',         color: '#2a7a7a', items: intersect(['A','B'],[]),      tip: `Items found in both ${n.A} and ${n.B}, including those also in ${n.C}.` },
+        { key: 'ac_inc', group: 'Shared between two', title: `In ${n.A} & ${n.C}`,                      notation: 'A ∩ C',         color: '#2a7a7a', items: intersect(['A','C'],[]),      tip: `Items found in both ${n.A} and ${n.C}, including those also in ${n.B}.` },
+        { key: 'bc_inc', group: 'Shared between two', title: `In ${n.B} & ${n.C}`,                      notation: 'B ∩ C',         color: '#2a7a7a', items: intersect(['B','C'],[]),      tip: `Items found in both ${n.B} and ${n.C}, including those also in ${n.A}.` },
+        { key: 'ab',     group: 'Exclusive to a pair', title: `In ${n.A} & ${n.B} only (not ${n.C})`,   notation: 'A ∩ B − C',     color: '#4a7a5a', items: intersect(['A','B'],['C']),   tip: `Items in both ${n.A} and ${n.B}, but not in ${n.C}.` },
+        { key: 'ac',     group: 'Exclusive to a pair', title: `In ${n.A} & ${n.C} only (not ${n.B})`,   notation: 'A ∩ C − B',     color: '#4a7a5a', items: intersect(['A','C'],['B']),   tip: `Items in both ${n.A} and ${n.C}, but not in ${n.B}.` },
+        { key: 'bc',     group: 'Exclusive to a pair', title: `In ${n.B} & ${n.C} only (not ${n.A})`,   notation: 'B ∩ C − A',     color: '#4a7a5a', items: intersect(['B','C'],['A']),   tip: `Items in both ${n.B} and ${n.C}, but not in ${n.A}.` },
+        { key: 'onlyA',  group: 'Unique to one',       title: `Only in ${n.A}`,                          notation: 'A − B − C',     color: '#a03030', items: intersect(['A'],['B','C']),   tip: `Items that only exist in ${n.A} and are not found in ${n.B} or ${n.C}.` },
+        { key: 'onlyB',  group: 'Unique to one',       title: `Only in ${n.B}`,                          notation: 'B − A − C',     color: '#1a5fa0', items: intersect(['B'],['A','C']),   tip: `Items that only exist in ${n.B} and are not found in ${n.A} or ${n.C}.` },
+        { key: 'onlyC',  group: 'Unique to one',       title: `Only in ${n.C}`,                          notation: 'C − A − B',     color: '#5a2a8a', items: intersect(['C'],['A','B']),   tip: `Items that only exist in ${n.C} and are not found in ${n.A} or ${n.B}.` },
       );
     }
 
@@ -388,7 +409,12 @@
     // itemsStore: key → original array (for sort toggle)
     const itemsStore = {};
 
+    let lastGroup = null;
     for (const sec of sections) {
+      if (sec.group && sec.group !== lastGroup) {
+        resultsEl.appendChild(buildGroupHeader(sec.group));
+        lastGroup = sec.group;
+      }
       itemsStore[sec.key] = sec.items;
       sortStates[sec.key] = false;
       resultsEl.appendChild(buildSection(sec, sortStates, itemsStore));
@@ -400,6 +426,14 @@
     }
 
     resultsEl.className = 'visible';
+  }
+
+  // ── build group header ────────────────────────────────────────────────────
+  function buildGroupHeader(label) {
+    const el = document.createElement('div');
+    el.className = 'group-header';
+    el.textContent = label;
+    return el;
   }
 
   // ── build a result section DOM node ───────────────────────────────────────
@@ -424,7 +458,28 @@
 
     titleSpan.appendChild(arrow);
     titleSpan.appendChild(document.createTextNode(sec.title));
+    if (sec.notation) {
+      const notEl = document.createElement('span');
+      notEl.className = 'notation';
+      notEl.textContent = '(' + sec.notation + ')';
+      titleSpan.appendChild(notEl);
+    }
     titleSpan.appendChild(badge);
+
+    if (sec.tip) {
+      const tipWrap = document.createElement('span');
+      tipWrap.className = 'tooltip-wrap';
+      const tipIcon = document.createElement('span');
+      tipIcon.className = 'tooltip-icon';
+      tipIcon.textContent = '?';
+      tipIcon.addEventListener('click', e => e.stopPropagation());
+      const tipBox = document.createElement('span');
+      tipBox.className = 'tooltip-box';
+      tipBox.textContent = sec.tip;
+      tipWrap.appendChild(tipIcon);
+      tipWrap.appendChild(tipBox);
+      titleSpan.appendChild(tipWrap);
+    }
 
     const actions = document.createElement('div');
     actions.className = 'header-actions';
