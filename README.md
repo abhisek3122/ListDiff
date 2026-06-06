@@ -12,7 +12,8 @@ This tool runs entirely in your browser. Nothing leaves your machine.
 
 - **2 or 3 list comparison** - paste two lists and get the diff, or add a third and get the full breakdown across all combinations
 - **Editable list names** - rename List A / B / C to something meaningful before comparing
-- **Exact intersection buckets** - see what's in all three, what's in any two, and what's unique to each
+- **Smart result sections** - for 3 lists, results are grouped into: what's in all three, what's shared between each pair (inclusive), what's exclusive to each pair, and what's unique to one. Each section shows the set notation (like A ∩ B − C) so it's clear what you're looking at
+- **Tooltips on every section** - hover the ? to get a plain English explanation of what that section contains
 - **Duplicate detection** - items that appeared more than once in a list are flagged separately, with the list they came from, so your counts stay accurate
 - **Sort toggle per section** - sort any result alphabetically before copying, without losing the original order
 - **Copy per section** - copy just the items you need from any result bucket
