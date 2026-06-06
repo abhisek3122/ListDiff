@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ListDiff</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: monospace;
+    font-size: 14px;
+    background: #f5f5f5;
+    color: #222;
+    padding: 24px;
+    min-height: 100vh;
+  }
+
+  h1 { font-size: 18px; font-weight: bold; margin-bottom: 16px; }
+
+  .options {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .options label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  /* tooltip */
+  .tooltip-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .tooltip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 1px solid #888;
+    font-size: 10px;
+    color: #555;
+    cursor: default;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .tooltip-icon:hover + .tooltip-box { display: block; }
+
+  .tooltip-box {
+    display: none;
+    position: absolute;
+    top: 22px;
+    left: 0;
+    background: #333;
+    color: #fff;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 3px;
+    width: 260px;
+    z-index: 10;
+    line-height: 1.5;
+    pointer-events: none;
+  }
+
+  /* inputs */
+  .inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .col-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+
+  .col-name {
+    font-weight: bold;
+    border: none;
+    border-bottom: 1px dashed transparent;
+    background: transparent;
+    font-family: monospace;
+    font-size: 14px;
+    color: #222;
+    outline: none;
+    padding: 0;
+    min-width: 40px;
+    max-width: 160px;
+  }
+
+  .col-name:hover { border-bottom-color: #aaa; }
+  .col-name:focus { border-bottom-color: #555; }
+
+  .entry-count {
+    font-size: 11px;
+    color: #888;
+  }
+
+  textarea {
+    width: 100%;
+    height: 180px;
+    font-family: monospace;
+    font-size: 13px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    background: #fff;
+    resize: vertical;
+    outline: none;
+  }
+
+  textarea:focus { border-color: #555; }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  button {
+    font-family: monospace;
+    font-size: 13px;
+    padding: 6px 14px;
+    border: 1px solid #888;
+    background: #fff;
+    cursor: pointer;
+  }
+
+  button:hover { background: #eee; }
+  button.primary { background: #222; color: #fff; border-color: #222; }
+  button.primary:hover { background: #444; }
+
+  /* results */
+  #results { display: none; }
+  #results.visible { display: block; }
+
+  .section {
+    margin-bottom: 16px;
+    border: 1px solid #ddd;
+    background: #fff;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #eee;
+    border-bottom: 1px solid #ddd;
+    cursor: pointer;
+    user-select: none;
+    gap: 8px;
+  }
+
+  .section-header:hover { background: #e0e0e0; }
+
+  .section-title {
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .badge {
+    font-size: 11px;
+    font-weight: normal;
+    color: #fff;
+    border-radius: 10px;
+    padding: 1px 7px;
+    flex-shrink: 0;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .sort-btn, .copy-btn {
+    font-family: monospace;
+    font-size: 11px;
+    padding: 3px 8px;
+    border: 1px solid #aaa;
+    background: #fff;
+    cursor: pointer;
+  }
+
+  .sort-btn:hover, .copy-btn:hover { background: #ddd; }
+  .sort-btn.active { background: #222; color: #fff; border-color: #222; }
+  .copy-btn.copied { color: green; border-color: green; }
+
+  .section-body { padding: 10px 12px; }
+
+  .item-list {
+    list-style: none;
+    line-height: 1.8;
+  }
+
+  .item-list li {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .src-tag {
+    font-size: 10px;
+    padding: 0 5px;
+    border-radius: 3px;
+    background: #ddd;
+    color: #444;
+    flex-shrink: 0;
+  }
+
+  .toggle-arrow { font-size: 10px; flex-shrink: 0; }
+
+  .section-body.hidden { display: none; }
+
+  .empty { color: #888; font-style: italic; }
+
+  .warn {
+    padding: 10px 14px;
+    background: #fffbe6;
+    border: 1px solid #e0c84a;
+    color: #7a6000;
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<h1>ListDiff</h1>
+
+<div class="options">
+  <label>
+    <input type="checkbox" id="optLower" checked>
+    Lowercase
+    <span class="tooltip-wrap">
+      <span class="tooltip-icon">?</span>
+      <span class="tooltip-box">Converts all items to lowercase before comparing. When on, "Apple" and "apple" are treated as the same item. Turn off if case matters for your data.</span>
+    </span>
+  </label>
+</div>
+
+<div class="inputs">
+  <div>
+    <div class="col-header">
+      <input class="col-name" id="nameA" value="List A" maxlength="40" spellcheck="false">
+      <span class="entry-count" id="cntA"></span>
+    </div>
+    <textarea id="listA" placeholder="Paste items here, one per line..."></textarea>
+  </div>
+  <div>
+    <div class="col-header">
+      <input class="col-name" id="nameB" value="List B" maxlength="40" spellcheck="false">
+      <span class="entry-count" id="cntB"></span>
+    </div>
+    <textarea id="listB" placeholder="Paste items here, one per line..."></textarea>
+  </div>
+  <div>
+    <div class="col-header">
+      <input class="col-name" id="nameC" value="List C" maxlength="40" spellcheck="false">
+      <span class="entry-count" id="cntC"></span>
+    </div>
+    <textarea id="listC" placeholder="Paste items here, one per line..."></textarea>
+  </div>
+</div>
+
+<div class="actions">
+  <button class="primary" onclick="compare()">Compare</button>
+  <button onclick="clearAll()">Clear</button>
+</div>
+
+<div id="results"></div>
+
+<script>
+  // ── parse ──────────────────────────────────────────────────────────────────
+  function parse(text, lower) {
+    const seen = new Set(), dupes = new Set(), items = [];
+    for (const raw of text.split('\n')) {
+      let v = raw.trim();
+      if (!v) continue;
+      if (lower) v = v.toLowerCase();
+      if (seen.has(v)) { dupes.add(v); } else { seen.add(v); items.push(v); }
+    }
+    return { items, dupes };
+  }
+
+  // ── entry count live ───────────────────────────────────────────────────────
+  function updateCount(taId, cntId) {
+    const n = document.getElementById(taId).value.split('\n').filter(l => l.trim()).length;
+    document.getElementById(cntId).textContent = n > 0 ? n + (n === 1 ? ' entry' : ' entries') : '';
+  }
+  ['A','B','C'].forEach(l => {
+    document.getElementById('list'+l).addEventListener('input', () => updateCount('list'+l, 'cnt'+l));
+  });
+
+  // ── compare ────────────────────────────────────────────────────────────────
+  function compare() {
+    const lower = document.getElementById('optLower').checked;
+    const names = {
+      A: document.getElementById('nameA').value.trim() || 'A',
+      B: document.getElementById('nameB').value.trim() || 'B',
+      C: document.getElementById('nameC').value.trim() || 'C',
+    };
+
+    const parsed = {
+      A: parse(document.getElementById('listA').value, lower),
+      B: parse(document.getElementById('listB').value, lower),
+      C: parse(document.getElementById('listC').value, lower),
+    };
+
+    const active = Object.keys(parsed).filter(k => parsed[k].items.length > 0);
+
+    const resultsEl = document.getElementById('results');
+    resultsEl.innerHTML = '';
+
+    if (active.length < 2) {
+      resultsEl.innerHTML = '<div class="warn">Paste data into at least two lists to compare.</div>';
+      resultsEl.className = 'visible';
+      return;
+    }
+
+    // Build sets for active lists
+    const sets = {};
+    for (const k of active) sets[k] = new Set(parsed[k].items);
+
+    // Helper: items in all of `inKeys` but none of `outKeys`
+    function intersect(inKeys, outKeys) {
+      const base = parsed[inKeys[0]].items;
+      return base.filter(x =>
+        inKeys.every(k => sets[k].has(x)) &&
+        outKeys.every(k => !sets[k].has(x))
+      );
+    }
+
+    const sections = [];
+
+    if (active.length === 2) {
+      const [k1, k2] = active;
+      const out = [];
+      sections.push(
+        { key: 'both',  title: `In both ${names[k1]} & ${names[k2]}`, color: '#2d7a2d', items: intersect([k1,k2], out) },
+        { key: 'only'+k1, title: `Only in ${names[k1]}`,             color: '#a03030', items: intersect([k1],[k2]) },
+        { key: 'only'+k2, title: `Only in ${names[k2]}`,             color: '#1a5fa0', items: intersect([k2],[k1]) },
+      );
+    } else {
+      // all three active
+      sections.push(
+        { key: 'all3',  title: `In all three (${names.A}, ${names.B} & ${names.C})`, color: '#2d7a2d', items: intersect(['A','B','C'],[]) },
+        { key: 'ab',    title: `In ${names.A} & ${names.B} only`,                    color: '#2a7a7a', items: intersect(['A','B'],['C']) },
+        { key: 'ac',    title: `In ${names.A} & ${names.C} only`,                    color: '#7a5a20', items: intersect(['A','C'],['B']) },
+        { key: 'bc',    title: `In ${names.B} & ${names.C} only`,                    color: '#6a3a9a', items: intersect(['B','C'],['A']) },
+        { key: 'onlyA', title: `Only in ${names.A}`,                                 color: '#a03030', items: intersect(['A'],['B','C']) },
+        { key: 'onlyB', title: `Only in ${names.B}`,                                 color: '#1a5fa0', items: intersect(['B'],['A','C']) },
+        { key: 'onlyC', title: `Only in ${names.C}`,                                 color: '#5a2a8a', items: intersect(['C'],['A','B']) },
+      );
+    }
+
+    // Duplicates across all active lists
+    const dupMap = new Map();
+    for (const k of active) {
+      for (const v of parsed[k].dupes) {
+        dupMap.set(v, dupMap.has(v) ? dupMap.get(v) + ' & ' + names[k] : names[k]);
+      }
+    }
+    const dups = [...dupMap.entries()].map(([val, src]) => ({ val, src }));
+
+    // ── render sections ──
+    // sortStates: key → boolean
+    const sortStates = {};
+    // itemsStore: key → original array (for sort toggle)
+    const itemsStore = {};
+
+    for (const sec of sections) {
+      itemsStore[sec.key] = sec.items;
+      sortStates[sec.key] = false;
+      resultsEl.appendChild(buildSection(sec, sortStates, itemsStore));
+    }
+
+    // ── render dups ──
+    if (dups.length > 0) {
+      resultsEl.appendChild(buildDupsSection(dups));
+    }
+
+    resultsEl.className = 'visible';
+  }
+
+  // ── build a result section DOM node ───────────────────────────────────────
+  function buildSection(sec, sortStates, itemsStore) {
+    const wrap = document.createElement('div');
+    wrap.className = 'section';
+
+    const header = document.createElement('div');
+    header.className = 'section-header';
+
+    const arrow = document.createElement('span');
+    arrow.className = 'toggle-arrow';
+    arrow.textContent = '▶';
+
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'section-title';
+
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.style.background = sec.color;
+    badge.textContent = sec.items.length;
+
+    titleSpan.appendChild(arrow);
+    titleSpan.appendChild(document.createTextNode(sec.title));
+    titleSpan.appendChild(badge);
+
+    const actions = document.createElement('div');
+    actions.className = 'header-actions';
+
+    const sortBtn = document.createElement('button');
+    sortBtn.className = 'sort-btn';
+    sortBtn.textContent = 'A→Z';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'copy-btn';
+    copyBtn.textContent = 'Copy';
+
+    actions.appendChild(sortBtn);
+    actions.appendChild(copyBtn);
+
+    header.appendChild(titleSpan);
+    header.appendChild(actions);
+
+    const body = document.createElement('div');
+    body.className = 'section-body hidden';
+
+    const ul = document.createElement('ul');
+    ul.className = 'item-list';
+    body.appendChild(ul);
+
+    wrap.appendChild(header);
+    wrap.appendChild(body);
+
+    renderList(ul, sec.items);
+
+    // toggle collapse
+    header.addEventListener('click', () => {
+      const open = !body.classList.contains('hidden');
+      body.classList.toggle('hidden', open);
+      arrow.textContent = open ? '▶' : '▼';
+    });
+
+    // sort toggle
+    sortBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      sortStates[sec.key] = !sortStates[sec.key];
+      sortBtn.classList.toggle('active', sortStates[sec.key]);
+      sortBtn.textContent = sortStates[sec.key] ? 'A→Z ✓' : 'A→Z';
+      const items = sortStates[sec.key]
+        ? [...itemsStore[sec.key]].sort((a, b) => a.localeCompare(b))
+        : itemsStore[sec.key];
+      renderList(ul, items);
+    });
+
+    // copy
+    copyBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const items = sortStates[sec.key]
+        ? [...itemsStore[sec.key]].sort((a, b) => a.localeCompare(b))
+        : itemsStore[sec.key];
+      copyText(items.join('\n'), copyBtn);
+    });
+
+    return wrap;
+  }
+
+  // ── build dups section ────────────────────────────────────────────────────
+  function buildDupsSection(dups) {
+    const wrap = document.createElement('div');
+    wrap.className = 'section';
+
+    const header = document.createElement('div');
+    header.className = 'section-header';
+
+    const arrow = document.createElement('span');
+    arrow.className = 'toggle-arrow';
+    arrow.textContent = '▶';
+
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'section-title';
+
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.style.background = '#b05a00';
+    badge.textContent = dups.length;
+
+    // tooltip
+    const tipWrap = document.createElement('span');
+    tipWrap.className = 'tooltip-wrap';
+    const tipIcon = document.createElement('span');
+    tipIcon.className = 'tooltip-icon';
+    tipIcon.textContent = '?';
+    tipIcon.addEventListener('click', e => e.stopPropagation());
+    const tipBox = document.createElement('span');
+    tipBox.className = 'tooltip-box';
+    tipBox.textContent = 'Items that appeared more than once within a single list. These were collapsed to one entry before comparing, so the counts above are not inflated. The tag shows which list had the duplicate.';
+    tipWrap.appendChild(tipIcon);
+    tipWrap.appendChild(tipBox);
+
+    titleSpan.appendChild(arrow);
+    titleSpan.appendChild(document.createTextNode('Duplicates removed'));
+    titleSpan.appendChild(badge);
+    titleSpan.appendChild(tipWrap);
+
+    header.appendChild(titleSpan);
+
+    const body = document.createElement('div');
+    body.className = 'section-body hidden';
+
+    const ul = document.createElement('ul');
+    ul.className = 'item-list';
+
+    for (const { val, src } of dups) {
+      const li  = document.createElement('li');
+      const tag = document.createElement('span');
+      tag.className = 'src-tag';
+      tag.textContent = src;
+      li.appendChild(tag);
+      li.appendChild(document.createTextNode(val));
+      ul.appendChild(li);
+    }
+
+    body.appendChild(ul);
+    wrap.appendChild(header);
+    wrap.appendChild(body);
+
+    header.addEventListener('click', () => {
+      const open = !body.classList.contains('hidden');
+      body.classList.toggle('hidden', open);
+      arrow.textContent = open ? '▶' : '▼';
+    });
+
+    return wrap;
+  }
+
+  // ── helpers ───────────────────────────────────────────────────────────────
+  function renderList(ul, items) {
+    ul.replaceChildren();
+    if (items.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = 'none';
+      ul.appendChild(li);
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    for (const item of items) {
+      const li = document.createElement('li');
+      li.textContent = item;
+      frag.appendChild(li);
+    }
+    ul.appendChild(frag);
+  }
+
+  function copyText(text, btn) {
+    const done = () => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+    } else {
+      fallbackCopy(text, done);
+    }
+  }
+
+  function fallbackCopy(text, done) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    try { document.execCommand('copy'); done(); } catch (_) {}
+    document.body.removeChild(ta);
+  }
+
+  function clearAll() {
+    ['A','B','C'].forEach(l => {
+      document.getElementById('list'+l).value = '';
+      document.getElementById('cnt'+l).textContent = '';
+    });
+    const r = document.getElementById('results');
+    r.innerHTML = '';
+    r.className = '';
+  }
+</script>
+</body>
+</html>
